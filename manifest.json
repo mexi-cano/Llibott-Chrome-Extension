@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Llibott Extension",
+  "description": "An extension that allows you to update the text in an input field on a website.",
+  "version": "1.0",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "*://feeschedule.llibott.com/"
+  ],
+  "action": {
+      "default_icon": {
+          "16": "llibott-icon.png",
+          "24": "llibott-icon.png",
+          "32": "llibott-icon.png"
+        },
+      "default_title": "Coolest extension",
+      "default_popup": "popup.html"
+  },
+  "icons": {
+    "128": "llibott-icon.png"
+  },
+  "background": {
+      "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://athenanet.athenahealth.com/*", "*://feeschedule.llibott.com/*"],
+      "js": ["content-script.js"]
+    }
+  ]
+}
