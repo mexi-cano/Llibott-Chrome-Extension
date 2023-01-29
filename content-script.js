@@ -1,6 +1,38 @@
 console.log('CONTENT SCRIPT RUNNING.');
 
-// listens for athenaConvertToInsurance event
+// Helper functions
+function focusOnWindow(){
+  let iframe = document.getElementById('GlobalWrapper');
+  let iframeDoc = iframe.contentWindow.document;
+  let frameContent = iframeDoc.getElementById("frameContent");
+  let frameContentDoc = frameContent.contentWindow.document;
+  let frMain = frameContentDoc.getElementById("frMain");
+  let frMainDoc = frMain.contentWindow.document;
+
+  return frMainDoc;
+};
+
+function addOrdersToFeeSchedule(){
+  athenaOrders.forEach(function(title) {
+    console.log(title.textContent);
+  });
+};
+
+function getAthenaOrders(){
+  let athenaOrders;
+  let orderArray = [];
+
+  const frMainDoc = focusOnWindow();
+
+  athenaOrders = frMainDoc.querySelectorAll('span.title');
+
+  athenaOrders.forEach(function(title) {
+    orderArray.push(title.textContent);
+    console.log(title.textContent);
+  });
+};
+
+// Listeners
 chrome.runtime.onConnect.addListener(function(port) {
   console.assert(port.name === "athenaConnection");
   port.onMessage.addListener(function(msg) {
@@ -10,14 +42,7 @@ chrome.runtime.onConnect.addListener(function(port) {
       console.log('starting insurance conversion.');
       convertToInsurance(port);
     };
-  });
-});
 
-
-// listens for athenaConvertToPractice event
-chrome.runtime.onConnect.addListener(function(port) {
-  console.assert(port.name === "athenaConnection");
-  port.onMessage.addListener(function(msg) {
     if (msg.message === "athenaConvertToPractice") {
       // Perform the necessary actions to convert to insurance
       // and send a message back to the sender indicating success or failure
@@ -27,20 +52,23 @@ chrome.runtime.onConnect.addListener(function(port) {
   });
 });
 
+chrome.runtime.onMessage.addListener(
+  function(request, sender, sendResponse) {
+    if( request.message === "athenaGrabOrders" ) {
+      console.log("athenaGrabOrders button was clicked!");
+      getAthenaOrders();
+      sendResponse({status: "athenaGrabOrders-success"});
+    };
 
-function focusOnWindow(){
-  var iframe = document.getElementById('GlobalWrapper');
-  var iframeDoc = iframe.contentWindow.document;
-  // var frWrapper = iframeDoc.getElementById("frWrapper");
-  var frameContent = iframeDoc.getElementById("frameContent");
-  var frameContentDoc = frameContent.contentWindow.document;
-  var frMain = frameContentDoc.getElementById("frMain");
-  var frMainDoc = frMain.contentWindow.document;
+    if( request.message === "feeScheduleAddOrders" ) {
+      console.log("feeScheduleAddOrders button was clicked!");
+      sendResponse({status: "feeScheduleAddOrders-success"});
+      addOrdersToFeeSchedule();
+    };
+  }
+);
 
-  return frMainDoc;
-};
-
-// 
+// Conversion functions
 function convertToInsurance(port) {
   const frMainDoc = focusOnWindow();
   let orderCount = 0;

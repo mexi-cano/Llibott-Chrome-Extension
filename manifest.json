@@ -1,8 +1,8 @@
 {
-  "manifest_version": 3,
   "name": "Llibott Extension",
-  "description": "An extension that allows you to update the text in an input field on a website.",
+  "description": "Llibott extension to help staff and providers be more efficient using Athena.",
   "version": "1.0",
+  "manifest_version": 3,
   "permissions": [
     "activeTab",
     "scripting",
@@ -15,7 +15,9 @@
       "default_icon": {
           "16": "llibott-icon.png",
           "24": "llibott-icon.png",
-          "32": "llibott-icon.png"
+          "32": "llibott-icon.png",
+          "64": "llibott-icon.png",
+          "128": "llibott-icon.png"
         },
       "default_title": "Coolest extension",
       "default_popup": "popup.html"
