@@ -40,15 +40,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     addAthenaOrdersButton.addEventListener('click', function() {
-        // Get data from the storage
-        chrome.storage.local.get(['labs'])
-        .then(function(result) {
-            alert('Value currently is ' + result.labs);
-        })
-        .catch(function(error) {
-            console.error('Error occurred while retrieving data from the storage', error);
-        });
-
         openLongLivedConnection("addAthenaOrders", "addAthenaOrders-success");
     });
     

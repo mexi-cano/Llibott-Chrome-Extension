@@ -53,9 +53,9 @@ function getAthenaOrders(port){
   console.log('orderArray:', orderArray);
 
   // Set data in the storage
-  chrome.storage.local.set({labs: "hello world!!"})
+  chrome.storage.local.set({labs: JSON.stringify(orderArray)})
   .then(function() {
-    alert('Data is saved in the storage');
+    console.log('Data is saved in the storage');
   })
   .catch(function(error) {
     console.error('Error occurred while saving data in the storage', error);
@@ -73,9 +73,6 @@ chrome.runtime.onConnect.addListener(function(port) {
       // Perform the necessary actions to convert to insurance
       // and send a message back to the sender indicating success or failure
       console.log('starting insurance conversion.');
-      chrome.storage.local.get(['labs'], function(items) {
-        alert('items:', items);
-      });
       convertToInsurance(port);
     };
 
@@ -194,14 +191,18 @@ function convertToPractice(port) {
 
 
 function addAthenaOrders(port){
-  alert('running addAthenaOrders().')
-  var newButton = document.createElement('button');
-  newButton.innerText = 'Click me!';
-  newButton.className = 'my-button';
-  var parentElement = document.getElementById('toolbar');
-  if (parentElement){
-      parentElement.appendChild(newButton);
-  };
+  const importOrdersButton = document.getElementById('importOrdersButton');
+
+  // Get data from the storage
+  chrome.storage.local.get(['labs'])
+  .then(function(result) {
+      alert('Value currently is ' + result.labs);
+      importOrdersButton.setAttribute('data-value', `${result.labs}`);
+      importOrdersButton.click();
+  })
+  .catch(function(error) {
+      console.error('Error occurred while retrieving data from the storage', error);
+  });
 }
 
 // Helpers
