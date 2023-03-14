@@ -18,18 +18,51 @@ function addOrdersToFeeSchedule(){
   });
 };
 
-function getAthenaOrders(){
-  let athenaOrders;
+
+function getAthenaOrders(port){
   let orderArray = [];
+  let orderCount = 0;
 
   const frMainDoc = focusOnWindow();
 
-  athenaOrders = frMainDoc.querySelectorAll('span.title');
+  let orderItem = frMainDoc.querySelectorAll('.orders .order .accordion-trigger');
 
-  athenaOrders.forEach(function(title) {
-    orderArray.push(title.textContent);
-    console.log(title.textContent);
+  orderItem.forEach((order) => {
+    console.log('orderCount:', orderCount + 1)
+    // Perform action on each order element
+    order.click();
+    orderCount += 1;
   });
+
+  //grab all orders listed in dropdowns
+  const selectElement = frMainDoc.querySelectorAll('select[name="ClinicalProviderOrderTypeID"]');
+  selectElement.forEach((order) => {
+    if (selectElement) {
+      const selectedText = order.selectedOptions[0].text;
+      orderArray.push(selectedText);
+    };
+  });
+
+  // grab all listed orders
+  const athenaOrders = frMainDoc.querySelectorAll('span.clinical-provider-order-type-note');
+  athenaOrders.forEach(function(title) {
+    orderArray.push(title.textContent.replace(/(\r\n|\n|\r|\t)/gm, ""));
+  });
+
+  orderArray = extractLabCorpCodes(orderArray);
+  console.log('orderArray:', orderArray);
+
+  // Set data in the storage
+  chrome.storage.local.set({labs: "hello world!!"})
+  .then(function() {
+    alert('Data is saved in the storage');
+  })
+  .catch(function(error) {
+    console.error('Error occurred while saving data in the storage', error);
+  });
+
+  port.postMessage({status: "athenaGrabOrders-success", labs: orderArray});
+  console.log('postMessage sent.');
 };
 
 // Listeners
@@ -40,6 +73,9 @@ chrome.runtime.onConnect.addListener(function(port) {
       // Perform the necessary actions to convert to insurance
       // and send a message back to the sender indicating success or failure
       console.log('starting insurance conversion.');
+      chrome.storage.local.get(['labs'], function(items) {
+        alert('items:', items);
+      });
       convertToInsurance(port);
     };
 
@@ -49,16 +85,30 @@ chrome.runtime.onConnect.addListener(function(port) {
       console.log('starting practice conversion.');
       convertToPractice(port);
     };
+
+    if (msg.message === "athenaGrabOrders") {
+      // Perform the necessary actions to convert to insurance
+      // and send a message back to the sender indicating success or failure
+      console.log('Fetching athena orders.');
+      getAthenaOrders(port);
+    };
+
+    if (msg.message === "addAthenaOrders") {
+      // Perform the necessary actions to convert to insurance
+      // and send a message back to the sender indicating success or failure
+      console.log('Transfering athena orders.');
+      addAthenaOrders(port);
+    };
   });
 });
 
 chrome.runtime.onMessage.addListener(
   function(request, sender, sendResponse) {
-    if( request.message === "athenaGrabOrders" ) {
-      console.log("athenaGrabOrders button was clicked!");
-      getAthenaOrders();
-      sendResponse({status: "athenaGrabOrders-success"});
-    };
+    // if( request.message === "athenaGrabOrders" ) {
+    //   console.log("athenaGrabOrders button was clicked!");
+    //   getAthenaOrders(port);
+    //   sendResponse({status: "athenaGrabOrders-success"});
+    // };
 
     if( request.message === "feeScheduleAddOrders" ) {
       console.log("feeScheduleAddOrders button was clicked!");
@@ -73,7 +123,7 @@ function convertToInsurance(port) {
   const frMainDoc = focusOnWindow();
   let orderCount = 0;
 
-  var orderItem = frMainDoc.querySelectorAll('.orders .order .accordion-trigger');
+  let orderItem = frMainDoc.querySelectorAll('.orders .order .accordion-trigger');
   orderItem.forEach((order) => {
     // Perform action on each order element
     order.click();
@@ -141,3 +191,29 @@ function convertToPractice(port) {
     }, 2000);
   });
 };
+
+
+function addAthenaOrders(port){
+  alert('running addAthenaOrders().')
+  var newButton = document.createElement('button');
+  newButton.innerText = 'Click me!';
+  newButton.className = 'my-button';
+  var parentElement = document.getElementById('toolbar');
+  if (parentElement){
+      parentElement.appendChild(newButton);
+  };
+}
+
+// Helpers
+function extractLabCorpCodes(arr) {
+  const result = {};
+  for (let i = 0; i < arr.length; i++) {
+    const parts = arr[i].split('|').map(s => s.trim());
+    if (parts.length === 2 && !result[parts[0]]) {
+      result[parts[0]] = parts[1];
+    }
+  };
+  // const resultObj = Object.assign({}, result); // Make a copy of the result object
+  // navigator.clipboard.writeText(JSON.stringify(resultObj)); // Copy the result to the clipboard
+  return result;
+}

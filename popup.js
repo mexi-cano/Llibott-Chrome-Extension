@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const athenaConvertToInsurance = document.getElementById('athenaConvertToInsurance');
     const athenaConvertToPractice = document.getElementById('athenaConvertToPractice');
     const feeScheduleAddOrdersButton = document.getElementById('feeScheduleAddOrdersButton');
+    const addAthenaOrdersButton = document.getElementById('addAthenaOrders');
     const successAlert = document.querySelector('#success-alert');
 
     const sendMessageToActiveTab = (message, successStatus) => {
@@ -13,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
             chrome.tabs.sendMessage(activeTab.id, {"message": message}, function(response) {
                 if (response.status === successStatus) {
                     console.log(`${message} response received:`, response);
-                }
+                };
             });
         });
     }
@@ -30,19 +31,34 @@ document.addEventListener('DOMContentLoaded', function() {
                     setTimeout(function(){
                         successAlert.classList.toggle('collapse');
                     }, 2500);
-                }
+                    console.log('msg.labs:', JSON.stringify(msg.labs));
+                    navigator.clipboard.writeText(JSON.stringify(msg.labs));
+                    // navigator.clipboard.writeText(`${msg.labs}`);
+                };
             });
         });
     }
+
+    addAthenaOrdersButton.addEventListener('click', function() {
+        // Get data from the storage
+        chrome.storage.local.get(['labs'])
+        .then(function(result) {
+            alert('Value currently is ' + result.labs);
+        })
+        .catch(function(error) {
+            console.error('Error occurred while retrieving data from the storage', error);
+        });
+
+        openLongLivedConnection("addAthenaOrders", "addAthenaOrders-success");
+    });
     
     athenaGrabOrdersButton.addEventListener('click', function() {
         console.log('Trigger athenaGrabOrdersButton.click()');
-        sendMessageToActiveTab("athenaGrabOrders", "athenaGrabOrders-success");
-    });
-    
-    feeScheduleAddOrdersButton.addEventListener('click', function() {
-        console.log('Trigger feeScheduleAddOrdersButton.click()');
-        sendMessageToActiveTab("feeScheduleAddOrders", "feeScheduleAddOrders-success");
+        openLongLivedConnection("athenaGrabOrders", "athenaGrabOrders-success");
+        successAlert.classList.toggle('collapse');
+        setTimeout(function(){
+            successAlert.classList.toggle('collapse');
+        }, 2500);
     });
     
     athenaConvertToInsurance.addEventListener('click', function() {

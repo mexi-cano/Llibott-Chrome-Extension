@@ -6,6 +6,7 @@
   "permissions": [
     "activeTab",
     "scripting",
+    "storage",
     "tabs"
   ],
   "host_permissions": [
@@ -30,7 +31,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://athenanet.athenahealth.com/*", "*://feeschedule.llibott.com/*"],
+      "matches": ["*://athenanet.athenahealth.com/*", "*://feeschedule.llibott.com/*", "https://dev-llibot-staff-aid-flask.webdev-cano.repl.co/*"],
       "js": ["content-script.js"]
     }
   ]
