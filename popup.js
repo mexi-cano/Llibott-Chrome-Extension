@@ -33,23 +33,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     }, 2500);
                     console.log('msg.labs:', JSON.stringify(msg.labs));
                     navigator.clipboard.writeText(JSON.stringify(msg.labs));
-                    // navigator.clipboard.writeText(`${msg.labs}`);
                 };
             });
         });
     }
 
-    addAthenaOrdersButton.addEventListener('click', function() {
-        openLongLivedConnection("addAthenaOrders", "addAthenaOrders-success");
-    });
+    // addAthenaOrdersButton.addEventListener('click', function() {
+    //     openLongLivedConnection("addAthenaOrders", "addAthenaOrders-success");
+    // });
     
     athenaGrabOrdersButton.addEventListener('click', function() {
         console.log('Trigger athenaGrabOrdersButton.click()');
         openLongLivedConnection("athenaGrabOrders", "athenaGrabOrders-success");
-        successAlert.classList.toggle('collapse');
-        setTimeout(function(){
-            successAlert.classList.toggle('collapse');
-        }, 2500);
     });
     
     athenaConvertToInsurance.addEventListener('click', function() {

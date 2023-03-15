@@ -34,35 +34,62 @@ function getAthenaOrders(port){
     orderCount += 1;
   });
 
-  //grab all orders listed in dropdowns
-  const selectElement = frMainDoc.querySelectorAll('select[name="ClinicalProviderOrderTypeID"]');
-  selectElement.forEach((order) => {
-    if (selectElement) {
-      const selectedText = order.selectedOptions[0].text;
-      orderArray.push(selectedText);
-    };
-  });
+  setTimeout(function(){
+    //grab all orders listed in dropdowns
+    const selectElement = frMainDoc.querySelectorAll('select[name="ClinicalProviderOrderTypeID"]');
+    selectElement.forEach((order) => {
+      if (selectElement) {
+        const selectedText = order.selectedOptions[0].text;
+        orderArray.push(selectedText);
+      };
+    });
 
-  // grab all listed orders
-  const athenaOrders = frMainDoc.querySelectorAll('span.clinical-provider-order-type-note');
-  athenaOrders.forEach(function(title) {
-    orderArray.push(title.textContent.replace(/(\r\n|\n|\r|\t)/gm, ""));
-  });
+    // grab all orders with labcorp code
+    const athenaOrders = frMainDoc.querySelectorAll('span.clinical-provider-order-type-note');
+    athenaOrders.forEach(function(title) {
+      console.log('coded order:', title.textContent)
+      orderArray.push(title.textContent.replace(/(\r\n|\n|\r|\t)/gm, ""));
+    });
 
-  orderArray = extractLabCorpCodes(orderArray);
-  console.log('orderArray:', orderArray);
+    console.log('original orderArray:', orderArray)
 
-  // Set data in the storage
-  chrome.storage.local.set({labs: JSON.stringify(orderArray)})
-  .then(function() {
-    console.log('Data is saved in the storage');
-  })
-  .catch(function(error) {
-    console.error('Error occurred while saving data in the storage', error);
-  });
+    orderArray = extractLabCorpCodes(orderArray);
+    console.log('orderArray:', orderArray);
 
-  port.postMessage({status: "athenaGrabOrders-success", labs: orderArray});
-  console.log('postMessage sent.');
+    //grab ALL toplevel orders
+    const allAthenaOrders = frMainDoc.querySelectorAll('span.title');
+    allAthenaOrders.forEach((order) => {
+      if (allAthenaOrders) {
+        const selectedText = order.textContent;
+        console.log('allAthenaOrder:', selectedText)
+        // orderArray.push(selectedText);
+      };
+    });
+
+    // Set data in the storage
+    chrome.storage.local.set({labs: JSON.stringify(orderArray)})
+    .then(function() {
+      console.log('Data is saved in storage');
+      port.postMessage({status: "athenaGrabOrders-success", labs: orderArray});
+      console.log('postMessage sent.');
+    })
+    .catch(function(error) {
+      console.error('Error occurred while saving data in storage', error);
+    });
+
+  }, 2000);
+
+  
+
+  // //grab ALL toplevel orders
+  // const allAthenaOrders = frMainDoc.querySelectorAll('span.title');
+  // allAthenaOrders.forEach((order) => {
+  //   if (allAthenaOrders) {
+  //     const selectedText = order.textContent;
+  //     console.log('allAthenaOrder:', selectedText)
+  //     // orderArray.push(selectedText);
+  //   };
+  // });
 };
 
 // Listeners
@@ -90,12 +117,6 @@ chrome.runtime.onConnect.addListener(function(port) {
       getAthenaOrders(port);
     };
 
-    if (msg.message === "addAthenaOrders") {
-      // Perform the necessary actions to convert to insurance
-      // and send a message back to the sender indicating success or failure
-      console.log('Transfering athena orders.');
-      addAthenaOrders(port);
-    };
   });
 });
 
@@ -188,22 +209,6 @@ function convertToPractice(port) {
     }, 2000);
   });
 };
-
-
-function addAthenaOrders(port){
-  const importOrdersButton = document.getElementById('importOrdersButton');
-
-  // Get data from the storage
-  chrome.storage.local.get(['labs'])
-  .then(function(result) {
-      alert('Value currently is ' + result.labs);
-      importOrdersButton.setAttribute('data-value', `${result.labs}`);
-      importOrdersButton.click();
-  })
-  .catch(function(error) {
-      console.error('Error occurred while retrieving data from the storage', error);
-  });
-}
 
 // Helpers
 function extractLabCorpCodes(arr) {
