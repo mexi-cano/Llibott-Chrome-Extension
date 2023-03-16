@@ -44,10 +44,22 @@ function getAthenaOrders(port){
       };
     });
 
+    //grab ALL toplevel orders
+    const allAthenaOrders = frMainDoc.querySelectorAll('span.title');
+    allAthenaOrders.forEach((order) => {
+      if (allAthenaOrders) {
+        const athenaOrder = order.textContent.replace(/(\r\n|\n|\r|\t)/gm, "");
+        const matchingOrder = findInHouseOrder(inHouseOrders, athenaOrder);
+        if (matchingOrder) {
+          console.log('matching athenaOrder:', matchingOrder);
+          orderArray.push(matchingOrder);
+        };
+      };
+    });
+
     // grab all orders with labcorp code
     const athenaOrders = frMainDoc.querySelectorAll('span.clinical-provider-order-type-note');
     athenaOrders.forEach(function(title) {
-      console.log('coded order:', title.textContent)
       orderArray.push(title.textContent.replace(/(\r\n|\n|\r|\t)/gm, ""));
     });
 
@@ -55,16 +67,6 @@ function getAthenaOrders(port){
 
     orderArray = extractLabCorpCodes(orderArray);
     console.log('orderArray:', orderArray);
-
-    //grab ALL toplevel orders
-    const allAthenaOrders = frMainDoc.querySelectorAll('span.title');
-    allAthenaOrders.forEach((order) => {
-      if (allAthenaOrders) {
-        const selectedText = order.textContent;
-        console.log('allAthenaOrder:', selectedText)
-        // orderArray.push(selectedText);
-      };
-    });
 
     // Set data in the storage
     chrome.storage.local.set({labs: JSON.stringify(orderArray)})
@@ -78,18 +80,6 @@ function getAthenaOrders(port){
     });
 
   }, 2000);
-
-  
-
-  // //grab ALL toplevel orders
-  // const allAthenaOrders = frMainDoc.querySelectorAll('span.title');
-  // allAthenaOrders.forEach((order) => {
-  //   if (allAthenaOrders) {
-  //     const selectedText = order.textContent;
-  //     console.log('allAthenaOrder:', selectedText)
-  //     // orderArray.push(selectedText);
-  //   };
-  // });
 };
 
 // Listeners
@@ -117,24 +107,14 @@ chrome.runtime.onConnect.addListener(function(port) {
       getAthenaOrders(port);
     };
 
+    if (msg.message === "addAthenaOrders") {
+      // Perform the necessary actions to convert to insurance
+      // and send a message back to the sender indicating success or failure
+      console.log('Transfering athena orders.');
+      addAthenaOrders(port);
+    };
   });
 });
-
-chrome.runtime.onMessage.addListener(
-  function(request, sender, sendResponse) {
-    // if( request.message === "athenaGrabOrders" ) {
-    //   console.log("athenaGrabOrders button was clicked!");
-    //   getAthenaOrders(port);
-    //   sendResponse({status: "athenaGrabOrders-success"});
-    // };
-
-    if( request.message === "feeScheduleAddOrders" ) {
-      console.log("feeScheduleAddOrders button was clicked!");
-      sendResponse({status: "feeScheduleAddOrders-success"});
-      addOrdersToFeeSchedule();
-    };
-  }
-);
 
 // Conversion functions
 function convertToInsurance(port) {
@@ -210,6 +190,23 @@ function convertToPractice(port) {
   });
 };
 
+// Adds athena orders to Fee Schedule
+function addAthenaOrders(port){
+  const importOrdersButton = document.getElementById('importOrdersButton');
+
+   // Get data from the storage
+   chrome.storage.local.get(['labs'])
+   .then(function(result) {
+       importOrdersButton.setAttribute('data-value', `${result.labs}`);
+       importOrdersButton.click();
+       chrome.storage.local.clear()
+       console.log('Storage cleared');
+   })
+   .catch(function(error) {
+       console.error('Error occurred while retrieving data from the storage', error);
+   });
+}
+
 // Helpers
 function extractLabCorpCodes(arr) {
   const result = {};
@@ -222,4 +219,66 @@ function extractLabCorpCodes(arr) {
   // const resultObj = Object.assign({}, result); // Make a copy of the result object
   // navigator.clipboard.writeText(JSON.stringify(resultObj)); // Copy the result to the clipboard
   return result;
-}
+};
+
+function findInHouseOrder(inHouseOrders, athenaOrder) {
+  for (let key in inHouseOrders) {
+    if (inHouseOrders.hasOwnProperty(key)) {
+      if (inHouseOrders[key].athena === athenaOrder) {
+        return `${inHouseOrders[key].in_house} | ${inHouseOrders[key].cpt_code}`;
+      };
+    }
+  }
+  return null;
+};
+
+
+
+// Constants
+const inHouseOrders = {
+	0: {
+    "in_house": "UA, w/o micro, automated",
+    "athena": "urinalysis, dipstick",
+    "cpt_code": "81003"
+  },
+  1: {
+    "in_house": "Blood glucose",
+    "athena": "glucose, fingerstick, blood",
+    "cpt_code": "82947"
+  },
+  2: {
+    "in_house": "Hemmocult one card",
+    "athena": "fecal occult blood, stool",
+    "cpt_code": "82271 "
+  },
+  3: {
+    "in_house": "Hemmocult one card",
+    "athena": "fecal occult blood X 3, stool",
+    "cpt_code": "82271"
+  },
+  4: {
+    "in_house": "Hemoccult, guaiac, colorectal neoplasm",
+    "athena": "",
+    "cpt_code": "82270"
+  },
+  5: {
+    "in_house": "Influenza / Flu Test",
+    "athena": "rapid flu (A+B)",
+    "cpt_code": "87804"
+  },
+  6: {
+    "in_house": "Pregnancy, urine",
+    "athena": "pregnancy test, urine",
+    "cpt_code": "81025"
+  },
+  7: {
+    "in_house": "RAPID COVID19 TEST QUICKVIEW ANTIGEN NASAL SWAB",
+    "athena": "rapid SARS CoV + SARS CoV 2 Ag, QL IA, respiratory",
+    "cpt_code": "87811"
+  },
+  8: {
+    "in_house": "Strep A, rapid, direct observation",
+    "athena": "rapid strep group A, throat",
+    "cpt_code": "87880"
+  }
+};

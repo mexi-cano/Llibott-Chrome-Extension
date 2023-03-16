@@ -4,7 +4,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const athenaGrabOrdersButton = document.getElementById('athenaGrabOrdersButton');
     const athenaConvertToInsurance = document.getElementById('athenaConvertToInsurance');
     const athenaConvertToPractice = document.getElementById('athenaConvertToPractice');
-    const feeScheduleAddOrdersButton = document.getElementById('feeScheduleAddOrdersButton');
     const addAthenaOrdersButton = document.getElementById('addAthenaOrders');
     const successAlert = document.querySelector('#success-alert');
 
@@ -38,9 +37,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // addAthenaOrdersButton.addEventListener('click', function() {
-    //     openLongLivedConnection("addAthenaOrders", "addAthenaOrders-success");
-    // });
+    // Adds orders to fee schedule
+    addAthenaOrdersButton.addEventListener('click', function() {
+        openLongLivedConnection("addAthenaOrders", "addAthenaOrders-success");
+    });
     
     athenaGrabOrdersButton.addEventListener('click', function() {
         console.log('Trigger athenaGrabOrdersButton.click()');
