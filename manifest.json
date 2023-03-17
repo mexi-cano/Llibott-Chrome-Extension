@@ -1,11 +1,12 @@
 {
   "name": "Llibott Extension",
   "description": "Llibott extension to help staff and providers be more efficient using Athena.",
-  "version": "1.0",
+  "version": "2.0",
   "manifest_version": 3,
   "permissions": [
     "activeTab",
     "scripting",
+    "storage",
     "tabs"
   ],
   "host_permissions": [

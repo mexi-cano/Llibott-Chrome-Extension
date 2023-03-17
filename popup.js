@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const athenaGrabOrdersButton = document.getElementById('athenaGrabOrdersButton');
     const athenaConvertToInsurance = document.getElementById('athenaConvertToInsurance');
     const athenaConvertToPractice = document.getElementById('athenaConvertToPractice');
-    const feeScheduleAddOrdersButton = document.getElementById('feeScheduleAddOrdersButton');
+    const addAthenaOrdersButton = document.getElementById('addAthenaOrders');
     const successAlert = document.querySelector('#success-alert');
 
     const sendMessageToActiveTab = (message, successStatus) => {
@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
             chrome.tabs.sendMessage(activeTab.id, {"message": message}, function(response) {
                 if (response.status === successStatus) {
                     console.log(`${message} response received:`, response);
-                }
+                };
             });
         });
     }
@@ -30,19 +30,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     setTimeout(function(){
                         successAlert.classList.toggle('collapse');
                     }, 2500);
-                }
+                    console.log('msg.labs:', JSON.stringify(msg.labs));
+                    navigator.clipboard.writeText(JSON.stringify(msg.labs));
+                };
             });
         });
     }
+
+    // Adds orders to fee schedule
+    addAthenaOrdersButton.addEventListener('click', function() {
+        openLongLivedConnection("addAthenaOrders", "addAthenaOrders-success");
+    });
     
     athenaGrabOrdersButton.addEventListener('click', function() {
         console.log('Trigger athenaGrabOrdersButton.click()');
-        sendMessageToActiveTab("athenaGrabOrders", "athenaGrabOrders-success");
-    });
-    
-    feeScheduleAddOrdersButton.addEventListener('click', function() {
-        console.log('Trigger feeScheduleAddOrdersButton.click()');
-        sendMessageToActiveTab("feeScheduleAddOrders", "feeScheduleAddOrders-success");
+        openLongLivedConnection("athenaGrabOrders", "athenaGrabOrders-success");
     });
     
     athenaConvertToInsurance.addEventListener('click', function() {
