@@ -20,12 +20,74 @@ function addOrdersToFeeSchedule(){
 
 
 function getAthenaOrders(port){
+  // Constants
+  const inHouseOrders = {
+    0: {
+      "in_house": "Urinalysis (UA), w/o micro, automated",
+      "athena": "urinalysis, dipstick",
+      "cpt_code": "81003"
+    },
+    1: {
+      "in_house": "Blood glucose",
+      "athena": "glucose, fingerstick, blood",
+      "cpt_code": "82947"
+    },
+    2: {
+      "in_house": "Hemmocult one card",
+      "athena": "fecal occult blood, stool",
+      "cpt_code": "82271 "
+    },
+    3: {
+      "in_house": "Hemmocult one card",
+      "athena": "fecal occult blood X 3, stool",
+      "cpt_code": "82271"
+    },
+    4: {
+      "in_house": "Hemoccult, guaiac, colorectal neoplasm",
+      "athena": "",
+      "cpt_code": "82270"
+    },
+    5: {
+      "in_house": "Influenza / Flu Test",
+      "athena": "rapid flu (A+B)",
+      "cpt_code": "87804"
+    },
+    6: {
+      "in_house": "Pregnancy, urine",
+      "athena": "pregnancy test, urine",
+      "cpt_code": "81025"
+    },
+    7: {
+      "in_house": "RAPID COVID19 TEST QUICKVIEW ANTIGEN NASAL SWAB",
+      "athena": "rapid SARS CoV + SARS CoV 2 Ag, QL IA, respiratory",
+      "cpt_code": "87811"
+    },
+    8: {
+      "in_house": "Strep A, rapid, direct observation",
+      "athena": "rapid strep group A, throat",
+      "cpt_code": "87880"
+    },
+    9: {
+      "in_house": "Electrocardiograma / EKG (ECG)",
+      "athena": "electrocardiogram",
+      "cpt_code": "93000"
+    },
+    10: {
+      "in_house": "Spirometry Single test",
+      "athena": "spirometry",
+      "cpt_code": "94010"
+    },
+    11: {
+      "in_house": "Spirometry Single test",
+      "athena": "spirometry, including graphic record, total and timed vital capacity, expiratory flow rate measurement(s) (PROC)",
+      "cpt_code": "94010"
+    }
+  };
   let orderArray = [];
   let orderCount = 0;
 
   const frMainDoc = focusOnWindow();
-
-  let orderItem = frMainDoc.querySelectorAll('.orders .order .accordion-trigger');
+  let orderItem = frMainDoc.querySelectorAll('.order.diagnoses-and-orders-item.encounter-list-item');
 
   orderItem.forEach((order) => {
     console.log('orderCount:', orderCount + 1)
@@ -201,6 +263,7 @@ function addAthenaOrders(port){
        importOrdersButton.click();
        chrome.storage.local.clear()
        console.log('Storage cleared');
+       port.postMessage({status: "addAthenaOrders-success"});
    })
    .catch(function(error) {
        console.error('Error occurred while retrieving data from the storage', error);
@@ -230,55 +293,4 @@ function findInHouseOrder(inHouseOrders, athenaOrder) {
     }
   }
   return null;
-};
-
-
-
-// Constants
-const inHouseOrders = {
-	0: {
-    "in_house": "UA, w/o micro, automated",
-    "athena": "urinalysis, dipstick",
-    "cpt_code": "81003"
-  },
-  1: {
-    "in_house": "Blood glucose",
-    "athena": "glucose, fingerstick, blood",
-    "cpt_code": "82947"
-  },
-  2: {
-    "in_house": "Hemmocult one card",
-    "athena": "fecal occult blood, stool",
-    "cpt_code": "82271 "
-  },
-  3: {
-    "in_house": "Hemmocult one card",
-    "athena": "fecal occult blood X 3, stool",
-    "cpt_code": "82271"
-  },
-  4: {
-    "in_house": "Hemoccult, guaiac, colorectal neoplasm",
-    "athena": "",
-    "cpt_code": "82270"
-  },
-  5: {
-    "in_house": "Influenza / Flu Test",
-    "athena": "rapid flu (A+B)",
-    "cpt_code": "87804"
-  },
-  6: {
-    "in_house": "Pregnancy, urine",
-    "athena": "pregnancy test, urine",
-    "cpt_code": "81025"
-  },
-  7: {
-    "in_house": "RAPID COVID19 TEST QUICKVIEW ANTIGEN NASAL SWAB",
-    "athena": "rapid SARS CoV + SARS CoV 2 Ag, QL IA, respiratory",
-    "cpt_code": "87811"
-  },
-  8: {
-    "in_house": "Strep A, rapid, direct observation",
-    "athena": "rapid strep group A, throat",
-    "cpt_code": "87880"
-  }
 };
