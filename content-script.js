@@ -90,7 +90,6 @@ function getAthenaOrders(port){
   let orderItem = frMainDoc.querySelectorAll('.order.diagnoses-and-orders-item.encounter-list-item');
 
   orderItem.forEach((order) => {
-    console.log('orderCount:', orderCount + 1)
     // Perform action on each order element
     order.click();
     orderCount += 1;
@@ -113,7 +112,6 @@ function getAthenaOrders(port){
         const athenaOrder = order.textContent.replace(/(\r\n|\n|\r|\t)/gm, "");
         const matchingOrder = findInHouseOrder(inHouseOrders, athenaOrder);
         if (matchingOrder) {
-          console.log('matching athenaOrder:', matchingOrder);
           orderArray.push(matchingOrder);
         };
       };
@@ -125,17 +123,11 @@ function getAthenaOrders(port){
       orderArray.push(title.textContent.replace(/(\r\n|\n|\r|\t)/gm, ""));
     });
 
-    console.log('original orderArray:', orderArray)
-
     orderArray = extractLabCorpCodes(orderArray);
-    console.log('orderArray:', orderArray);
-
     // Set data in the storage
     chrome.storage.local.set({labs: JSON.stringify(orderArray)})
     .then(function() {
-      console.log('Data is saved in storage');
       port.postMessage({status: "athenaGrabOrders-success", labs: orderArray});
-      console.log('postMessage sent.');
     })
     .catch(function(error) {
       console.error('Error occurred while saving data in storage', error);
@@ -151,27 +143,23 @@ chrome.runtime.onConnect.addListener(function(port) {
     if (msg.message === "athenaConvertToInsurance") {
       // Perform the necessary actions to convert to insurance
       // and send a message back to the sender indicating success or failure
-      console.log('starting insurance conversion.');
       convertToInsurance(port);
     };
 
     if (msg.message === "athenaConvertToPractice") {
-      console.log('starting practice conversion.');
       convertToPractice(port);
     };
 
     if (msg.message === "athenaGrabOrders") {
-      console.log('Fetching athena orders.');
       getAthenaOrders(port);
     };
 
     if (msg.message === "addAthenaOrders") {
-      console.log('Transfering athena orders.');
       addAthenaOrders(port);
     };
 
     if (msg.message === "calcASCVDRisk") {
-      calcASCVDRisk();
+      calcASCVDRisk(port);
     }
   });
 });
@@ -288,6 +276,8 @@ function calcASCVDRisk(port) {
     // Access individual checkbox states
     PatientInfo.isAA = storedCheckboxStates.isAA;
     PatientInfo.smoker = storedCheckboxStates.currentSmoker;
+
+    chrome.storage.local.clear()
   });
 
   const patientDemographicsHTML = frMainDoc.getElementsByClassName('age-and-sex');
@@ -317,12 +307,10 @@ function calcASCVDRisk(port) {
   const medsTab = frMainDoc.querySelector('[data-metric-location="nav-chart-medications"]');;
 
   let bpValues = {};
-  let medsTaking = {};
 
   if (vitalsTab) {
     // Click event on the Problems element
     clickOnElement(vitalsTab).then(() => {
-      console.log('Problems click finished.');
       setTimeout(function() {
         function checkForHypertension(frMainDoc) {
           const diseaseElements = frMainDoc.querySelectorAll(".plw_c_problem__name");
@@ -352,7 +340,6 @@ function calcASCVDRisk(port) {
     clickOnElement(vitalsTab).then(() => {
       setTimeout(function() {
         function findBPValue(frMainDoc) {
-          console.log('Starting findBPValue')
           const bpElement = frMainDoc.querySelector('[data-vital-key="BLOODPRESSURE"] .value');
           
           if (bpElement) {
@@ -363,7 +350,6 @@ function calcASCVDRisk(port) {
           return null;
         };
         bpValues = findBPValue(frMainDoc);
-        console.log('bpValues:', bpValues);
       }, 2000 );
     });
 
@@ -563,6 +549,7 @@ function calcASCVDRisk(port) {
 
         if (systolicBPValidated && ageValidated && hdlValidated && totalCholesterolValidated){
           const ascvdRisk = computeTenYearScore(patientRiskData);
+          port.postMessage({status: "calcASCVDRisk-success"});
           alert(`10-year ASCVD Risk: ${ascvdRisk}%`);
         };
       }, 2000 );
@@ -570,9 +557,6 @@ function calcASCVDRisk(port) {
   } else {
     alert("Please navigate into patient's chart and make sure lipid labs are visible.");
   };
-
-  console.log('PatientInfo:', PatientInfo);
-  console.log('patientLipidResults:', patientLipidResults);
 };
 
 // Helpers
