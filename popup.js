@@ -5,18 +5,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const athenaConvertToInsurance = document.getElementById('athenaConvertToInsurance');
     const athenaConvertToPractice = document.getElementById('athenaConvertToPractice');
     const addAthenaOrdersButton = document.getElementById('addAthenaOrders');
+    const calcASCVDRiskButton = document.getElementById('calcASCVDRisk');
     const successAlert = document.querySelector('#success-alert');
-
-    const sendMessageToActiveTab = (message, successStatus) => {
-        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-            var activeTab = tabs[0];
-            chrome.tabs.sendMessage(activeTab.id, {"message": message}, function(response) {
-                if (response.status === successStatus) {
-                    console.log(`${message} response received:`, response);
-                };
-            });
-        });
-    }
     
     const openLongLivedConnection = (message, successStatus) => {
         chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
@@ -35,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 };
             });
         });
-    }
+    };
 
     // Adds orders to fee schedule
     addAthenaOrdersButton.addEventListener('click', function() {
@@ -57,4 +47,26 @@ document.addEventListener('DOMContentLoaded', function() {
         openLongLivedConnection("athenaConvertToPractice", "athenaConvertToPractice-success");
     });
 
+    calcASCVDRiskButton.addEventListener('click', function() {
+        console.log('Trigger calcASCVDRiskButton.click()');
+        const storeCheckboxState = () => {
+            // Get the checkbox elements
+            const aaCheckbox = document.getElementById('isAA');
+            const smokerCheckbox = document.getElementById('currentSmoker');
+          
+            // Create an object to store the checkbox states
+            const checkboxStates = {
+              isAA: aaCheckbox.checked,
+              currentSmoker: smokerCheckbox.checked
+            };
+          
+            // Store the object in Chrome Extension's local storage
+            chrome.storage.local.set({ checkboxStates }, function() {
+              console.log('Checkbox states stored in local storage:', checkboxStates);
+            });
+          };
+
+        storeCheckboxState();
+        openLongLivedConnection("calcASCVDRisk", "calcASCVDRisk-success");
+    });
 });

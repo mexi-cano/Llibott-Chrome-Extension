@@ -1,13 +1,13 @@
 console.log('CONTENT SCRIPT RUNNING.');
 
 // Helper functions
-function focusOnWindow(){
-  let iframe = document.getElementById('GlobalWrapper');
-  let iframeDoc = iframe.contentWindow.document;
-  let frameContent = iframeDoc.getElementById("frameContent");
-  let frameContentDoc = frameContent.contentWindow.document;
-  let frMain = frameContentDoc.getElementById("frMain");
-  let frMainDoc = frMain.contentWindow.document;
+function focusOnFrMainDoc(){
+  const iframe = document.getElementById('GlobalWrapper');
+  const iframeDoc = iframe.contentWindow.document;
+  const frameContent = iframeDoc.getElementById("frameContent");
+  const frameContentDoc = frameContent.contentWindow.document;
+  const frMain = frameContentDoc.getElementById("frMain");
+  const frMainDoc = frMain.contentWindow.document;
 
   return frMainDoc;
 };
@@ -86,7 +86,7 @@ function getAthenaOrders(port){
   let orderArray = [];
   let orderCount = 0;
 
-  const frMainDoc = focusOnWindow();
+  const frMainDoc = focusOnFrMainDoc();
   let orderItem = frMainDoc.querySelectorAll('.order.diagnoses-and-orders-item.encounter-list-item');
 
   orderItem.forEach((order) => {
@@ -156,99 +156,90 @@ chrome.runtime.onConnect.addListener(function(port) {
     };
 
     if (msg.message === "athenaConvertToPractice") {
-      // Perform the necessary actions to convert to insurance
-      // and send a message back to the sender indicating success or failure
       console.log('starting practice conversion.');
       convertToPractice(port);
     };
 
     if (msg.message === "athenaGrabOrders") {
-      // Perform the necessary actions to convert to insurance
-      // and send a message back to the sender indicating success or failure
       console.log('Fetching athena orders.');
       getAthenaOrders(port);
     };
 
     if (msg.message === "addAthenaOrders") {
-      // Perform the necessary actions to convert to insurance
-      // and send a message back to the sender indicating success or failure
       console.log('Transfering athena orders.');
       addAthenaOrders(port);
     };
+
+    if (msg.message === "calcASCVDRisk") {
+      calcASCVDRisk();
+    }
   });
 });
 
 // Conversion functions
 function convertToInsurance(port) {
-  const frMainDoc = focusOnWindow();
+  const frMainDoc = focusOnFrMainDoc();
   let orderCount = 0;
 
   let orderItem = frMainDoc.querySelectorAll('.orders .order .accordion-trigger');
   orderItem.forEach((order) => {
     // Perform action on each order element
-    order.click();
-    console.log('opened orderItem.');
+    // order.click();
+    clickOnElement(order).then(() => {
+      const detailsView = frMainDoc.querySelector('.details-view');
+      detailsView.classList.add('show-secondary');
 
-    const detailsView = frMainDoc.querySelector('.details-view');
-    detailsView.classList.add('show-secondary');
-    console.log('added "show-secondary" to detailsView classlist.');
-
-    setTimeout(function(){
-      // convert from 'PRACTICE' to 'INSURANCE'
-      const orderBilling = frMainDoc.querySelectorAll(`span[data-value="INSURANCE"].select-bar-option`);
-
-      if (orderBilling[orderCount]){
-        orderBilling[orderCount].click();
-      };
-
-      order.click();
-      console.log('orderItem closed');
-
-      orderCount += 1;
-
-      if (orderCount == orderBilling.length){
-        port.postMessage({status: "athenaConvertToInsurance-success"});
-        console.log('postMessage sent.');
-      };
-
-    }, 2000);
+      setTimeout(function(){
+        // convert from 'PRACTICE' to 'INSURANCE'
+        const orderBilling = frMainDoc.querySelectorAll(`span[data-value="INSURANCE"].select-bar-option`);
+  
+        if (orderBilling[orderCount]){
+          orderBilling[orderCount].click();
+        };
+  
+        order.click();
+  
+        orderCount += 1;
+  
+        if (orderCount == orderBilling.length){
+          port.postMessage({status: "athenaConvertToInsurance-success"});
+        };
+  
+      }, 2000);
+    })
   });
 };
 
 
 function convertToPractice(port) {
-  const frMainDoc = focusOnWindow();
+  const frMainDoc = focusOnFrMainDoc();
   let orderCount = 0;
 
   var orderItem = frMainDoc.querySelectorAll('.orders .order .accordion-trigger');
   orderItem.forEach((order) => {
     // Perform action on each order element
-    order.click();
-    console.log('opened orderItem.');
+    clickOnElement(order).then(() => {
+      const detailsView = frMainDoc.querySelector('.details-view');
+      detailsView.classList.add('show-secondary');
 
-    const detailsView = frMainDoc.querySelector('.details-view');
-    detailsView.classList.add('show-secondary');
-    console.log('added "show-secondary" to detailsView classlist.');
+      setTimeout(function(){
+        // convert from 'PRACTICE' to 'INSURANCE'
+        const orderBilling = frMainDoc.querySelectorAll(`span[data-value="CLIENTBILL"].select-bar-option`);
 
-    setTimeout(function(){
-      // convert from 'PRACTICE' to 'INSURANCE'
-      const orderBilling = frMainDoc.querySelectorAll(`span[data-value="CLIENTBILL"].select-bar-option`);
+        if (orderBilling[orderCount]){
+          orderBilling[orderCount].click();
+        };
 
-      if (orderBilling[orderCount]){
-        orderBilling[orderCount].click();
-      };
+        order.click();
 
-      order.click();
-      console.log('orderItem closed');
+        orderCount += 1;
 
-      orderCount += 1;
+        if (orderCount == orderBilling.length){
+          port.postMessage({status: "athenaConvertToPractice-success"});
+        };
 
-      if (orderCount == orderBilling.length){
-        port.postMessage({status: "athenaConvertToPractice-success"});
-        console.log('postMessage sent.');
-      };
-
-    }, 2000);
+      }, 2000);
+    });
   });
 };
 
@@ -262,15 +253,333 @@ function addAthenaOrders(port){
        importOrdersButton.setAttribute('data-value', `${result.labs}`);
        importOrdersButton.click();
        chrome.storage.local.clear()
-       console.log('Storage cleared');
        port.postMessage({status: "addAthenaOrders-success"});
    })
    .catch(function(error) {
        console.error('Error occurred while retrieving data from the storage', error);
    });
-}
+};
+
+// Grabs lipid, vitals, and demographic values to calc ASCVD Risk
+function calcASCVDRisk(port) {
+  const frMainDoc = focusOnFrMainDoc();
+
+  /**
+   * Creates a default Patient model for the application with all undefined fields and
+   * resolves the promise used when retrieving patient information. 
+   */
+  const PatientInfo = {
+    gender: undefined,
+    age: undefined,
+    smoker: undefined,
+    isAA: undefined,
+    hypertensive: undefined,
+    diabetic: undefined, 
+    cholesteroltotal: undefined,
+    hDLcholesterol: undefined,
+    lDLCholCalcnih: undefined,
+    systolicBP: undefined
+  };
+
+  // Retrieve the stored checkbox states from local storage
+  chrome.storage.local.get(['checkboxStates'], function(result) {
+    const storedCheckboxStates = result.checkboxStates;
+    
+    // Access individual checkbox states
+    PatientInfo.isAA = storedCheckboxStates.isAA;
+    PatientInfo.smoker = storedCheckboxStates.currentSmoker;
+  });
+
+  const patientDemographicsHTML = frMainDoc.getElementsByClassName('age-and-sex');
+  // Parse html data into patientDemographic object
+  for (let i = 0; i < patientDemographicsHTML.length; i++) {
+    const element = patientDemographicsHTML[i];
+    const text = element.textContent.trim();
+
+    const ageMatch = text.match(/(\d+)yo/);
+    const genderMatch = text.match(/([MF])/);
+
+    if (ageMatch && genderMatch) {
+      PatientInfo.age = parseInt(ageMatch[1]);
+      PatientInfo.gender = genderMatch[1];
+    } else {
+      alert('Patient age or gender is missing!');
+    };
+  };
+
+
+  // Grab and parse lipid results into object
+  const patientLipidResults = getAnalyteValues(frMainDoc);
+
+
+  // Grab vitals
+  const vitalsTab = frMainDoc.querySelector('li.metric-location.chart-tabs__list-item[data-chart-section-id="vitals"][data-metric-location="nav-chart-vitals"]');
+  const medsTab = frMainDoc.querySelector('[data-metric-location="nav-chart-medications"]');;
+
+  let bpValues = {};
+  let medsTaking = {};
+
+  if (vitalsTab) {
+    // Click event on the Problems element
+    clickOnElement(vitalsTab).then(() => {
+      console.log('Problems click finished.');
+      setTimeout(function() {
+        function checkForHypertension(frMainDoc) {
+          const diseaseElements = frMainDoc.querySelectorAll(".plw_c_problem__name");
+          const diseaseNames = Array.from(diseaseElements).map((element) => element.textContent.trim());
+        
+          const targetRegex = /(hypertension|hypertensive disorder|hypertensive heart and renal disease|benign essential hypertension)/i;
+        
+          return diseaseNames.some((name) => targetRegex.test(name));
+        };
+  
+        PatientInfo.hypertensive = checkForHypertension(frMainDoc);
+        
+        function checkForDiabetes(frMainDoc) {
+          const diseaseElements = frMainDoc.querySelectorAll(".plw_c_problem__name");
+          const diseaseNames = Array.from(diseaseElements).map((element) => element.textContent.trim());
+        
+          const hasDiabetes = diseaseNames.some((name) => name.toLowerCase().includes('diabetes'));
+        
+          return hasDiabetes;
+        };
+        PatientInfo.diabetic = checkForDiabetes(frMainDoc);
+
+      }, 2000 );
+    });
+
+    // Click event on the Vitals element
+    clickOnElement(vitalsTab).then(() => {
+      setTimeout(function() {
+        function findBPValue(frMainDoc) {
+          console.log('Starting findBPValue')
+          const bpElement = frMainDoc.querySelector('[data-vital-key="BLOODPRESSURE"] .value');
+          
+          if (bpElement) {
+            const [systolicBP, diastolicBP] = bpElement.textContent.trim().split('/').map(value => parseInt(value));
+            return { systolicBP, diastolicBP };
+          }
+          
+          return null;
+        };
+        bpValues = findBPValue(frMainDoc);
+        console.log('bpValues:', bpValues);
+      }, 2000 );
+    });
+
+    // Click event on the Meds element
+    clickOnElement(medsTab).then(() => {
+      setTimeout(function() {
+        // Calculate ASCVD Risk and return
+        medsTaking = findMeds(frMainDoc);
+
+        const mergeObjects = (...objects) => {
+          const mergedObj = {};
+        
+          function processObject(obj) {
+            for (const key in obj) {
+              const value = obj[key];
+              if (typeof value !== 'undefined') {
+                if (key.includes("comment:")) {
+                  continue; // Skip keys with "comment"
+                }
+                const newKey = key.replace(/[^\w]/g, ""); // Remove special characters
+                mergedObj[newKey] = typeof value === "string" && !isNaN(value) && value.trim() !== "" ? parseInt(value) : value; // Convert non-empty string numbers to integers
+              }
+            }
+          };
+        
+          objects.forEach(obj => processObject(obj));
+        
+          return mergedObj;
+        };
+
+        const patientRiskData = mergeObjects(bpValues, patientLipidResults, PatientInfo);
+
+        const validateBloodPressure = (obj) => {
+          const { systolicBP, age } = obj;
+        
+          if (!systolicBP) {
+            alert('No BP value recorded.');
+            return false;
+          }
+        
+          if (systolicBP >= 90 && systolicBP <= 200) {
+            return true;
+          } else {
+            alert('Systolic blood pressure is out of range.');
+            return false;
+          }
+        };
+        
+        const systolicBPValidated = validateBloodPressure(patientRiskData);
+
+        const validateAge = (obj) => {
+          const age = obj.age;
+        
+          if (typeof age === 'undefined') {
+            alert('No age found!');
+            return false;
+          };
+        
+          if (age >= 40 && age <= 79) {
+            return true;
+          } else {
+            alert('ASCVD Risk calculation is only for patients age 40-79.');
+            return false;
+          };
+        };
+        
+        const ageValidated = validateAge(patientRiskData);
+
+        const validateHDLCholesterol = (data) => {
+          const hdlCholesterol = data.HDLcholesterol;
+          const age = data.age;
+        
+          if (typeof age === 'undefined') {
+            alert('No age value provided.');
+            return false;
+          }
+        
+          if (hdlCholesterol >= 20 && hdlCholesterol <= 200) {
+            return true;
+          } else {
+            alert('HDL cholesterol is out of range.');
+            return false;
+          }
+        };
+        
+        const hdlValidated = validateHDLCholesterol(patientRiskData);
+
+        const validateTotalCholesterol = (obj) => {
+          const cholesterol = obj.cholesteroltotal;
+          const age = obj.age;
+          
+          if (typeof age !== 'number') {
+            alert('Age value is missing!');
+            return false;
+          }
+          
+          if (cholesterol >= 130 && cholesterol <= 320) {
+            return true;
+          } else {
+            alert('Cholesterol is out of range!');
+            return false;
+          }
+        };
+
+        const totalCholesterolValidated = validateTotalCholesterol(patientRiskData);
+
+         /**
+         * Computes the ASCVD Risk Estimate for an individual over the next 10 years.
+         * @param patientInfo - patientInfo object from ASCVDRisk data model
+         * @returns {*} Returns the risk score or null if not in the appropriate age range
+         */
+        const computeTenYearScore = (patientInfo) => {
+          const isInteger = (value) => Number.isInteger(value);
+
+          // Check if variables are integers
+          const variables = {
+            age: patientInfo.age,
+            cholesteroltotal: patientInfo.cholesteroltotal,
+            HDLcholesterol: patientInfo.HDLcholesterol,
+            systolicBP: patientInfo.systolicBP,
+            smoker: patientInfo.smoker,
+            diabetic: patientInfo.diabetic
+          };
+
+          const nonIntegerVariables = [];
+
+          for (const variable in variables) {
+            if (!isInteger(variables[variable])) {
+              nonIntegerVariables.push({ name: variable, value: variables[variable] });
+            }
+          }
+
+          // Log non-integer variables
+          if (nonIntegerVariables.length > 0) {
+            nonIntegerVariables.forEach((variable) => {
+              console.log(`Variable ${variable.name} has a non-integer value: ${variable.value}`);
+            });
+          }
+
+          if (patientInfo.age < 40 || patientInfo.age > 79) {
+            return null;
+          }
+
+          const lnAge = Math.log(patientInfo.age);
+          const lnTotalChol = Math.log(patientInfo.cholesteroltotal);
+          const lnHdl = Math.log(patientInfo.HDLcholesterol);
+          const trlnsbp = patientInfo.hypertensive ? Math.log(parseFloat(patientInfo.systolicBP)) : 0;
+          const ntlnsbp = patientInfo.hypertensive ? 0 : Math.log(parseFloat(patientInfo.systolicBP));
+          const ageTotalChol = lnAge * lnTotalChol;
+          const ageHdl = lnAge * lnHdl;
+          const agetSbp = lnAge * trlnsbp;
+          const agentSbp = lnAge * ntlnsbp;
+          const ageSmoke = patientInfo.smoker ? lnAge : 0;
+
+          const isAA = patientInfo.isAA;
+          const isMale = patientInfo.gender === 'M';
+          let s010Ret = 0;
+          let mnxbRet = 0;
+          let predictRet = 0;
+
+          const calculateScore = () => {
+            if (isAA && !isMale) {
+              s010Ret = 0.95334;
+              mnxbRet = 86.6081;
+              predictRet = (17.1141 * lnAge) + (0.9396 * lnTotalChol) + (-18.9196 * lnHdl)
+                + (4.4748 * ageHdl) + (29.2907 * trlnsbp) + (-6.4321 * agetSbp) + (27.8197 * ntlnsbp) +
+                (-6.0873 * agentSbp) + (0.6908 * Number(patientInfo.smoker))
+                + (0.8738 * Number(patientInfo.diabetic));
+            } else if (!isAA && !isMale) {
+              s010Ret = 0.96652;
+              mnxbRet = -29.1817;
+              predictRet = (-29.799 * lnAge) + (4.884 * (lnAge ** 2)) + (13.54 * lnTotalChol) +
+                (-3.114 * ageTotalChol) + (-13.578 * lnHdl) + (3.149 * ageHdl) + (2.019 * trlnsbp) +
+                (1.957 * ntlnsbp) + (7.574 * Number(patientInfo.smoker)) +
+                (-1.665 * ageSmoke) + (0.661 * Number(patientInfo.diabetic));
+            } else if (isAA && isMale) {
+              s010Ret = 0.89536;
+              mnxbRet = 19.5425;
+              predictRet = (2.469 * lnAge) + (0.302 * lnTotalChol) + (-0.307 * lnHdl) +
+                (1.916 * trlnsbp) + (1.809 * ntlnsbp) + (0.549 *
+                Number(patientInfo.smoker)) +
+                (0.645 * Number(patientInfo.diabetic));
+            } else {
+              s010Ret = 0.91436;
+              mnxbRet = 61.1816;
+              predictRet = (12.344 * lnAge) + (11.853 * lnTotalChol) + (-2.664 * ageTotalChol) +
+                (-7.99 * lnHdl) + (1.769 * ageHdl) + (1.797 * trlnsbp) + (1.764 * ntlnsbp) +
+                (7.837 * Number(patientInfo.smoker)) + (-1.795 * ageSmoke) +
+                (0.658 * Number(patientInfo.diabetic));
+            };
+
+            const pct = (1 - (s010Ret ** Math.exp(predictRet - mnxbRet)));
+            return Math.round((pct * 100) * 10) / 10;
+          };
+          return calculateScore();
+        };
+
+        if (systolicBPValidated && ageValidated && hdlValidated && totalCholesterolValidated){
+          const ascvdRisk = computeTenYearScore(patientRiskData);
+          alert(`10-year ASCVD Risk: ${ascvdRisk}%`);
+        };
+      }, 2000 );
+    });
+  } else {
+    alert("Please navigate into patient's chart and make sure lipid labs are visible.");
+  };
+
+  console.log('PatientInfo:', PatientInfo);
+  console.log('patientLipidResults:', patientLipidResults);
+};
 
 // Helpers
+async function clickOnElement(element){
+  element.click();
+};
+
 function extractLabCorpCodes(arr) {
   const result = {};
   for (let i = 0; i < arr.length; i++) {
@@ -293,4 +602,183 @@ function findInHouseOrder(inHouseOrders, athenaOrder) {
     }
   }
   return null;
+};
+
+// Functions for ASCVD Risk Calc
+function getAnalyteValues(frMainDoc) {
+  const divs = frMainDoc.getElementsByClassName('multiple-document-item');
+  const analyteObject = {};
+
+  for (let i = 0; i < divs.length; i++) {
+    const link = divs[i].querySelector('a[data-title*=lipid]');
+    if (link) {
+      const tableRows = divs[i].querySelectorAll('tr.multi-result-analyte-row');
+
+      for (let j = 0; j < tableRows.length; j++) {
+        const analyteName = tableRows[j].querySelector('.analyte-row-observationidentifiertext').textContent.trim();
+        const analyteValue = tableRows[j].querySelector('.analyte-row-observationvalue').textContent.trim();
+
+        analyteObject[analyteName] = analyteValue;
+      };
+
+      break; // Exit the loop if a match is found
+    };
+  };
+
+  return analyteObject;
+};
+
+function findMeds(frMainDoc){
+  const medicationList = frMainDoc.querySelectorAll('.chart-medication.medication-Active');
+
+  const statinMeds = [
+    // Atorvastatin (generic) and brand names
+    'atorvastatin',
+    'Lipitor',
+    'Sortis',
+    'Torvast',
+    'Tulip',
+    
+    // Rosuvastatin (generic) and brand names
+    'rosuvastatin',
+    'Crestor',
+    'Rosulip',
+    'Rosuvas',
+    'Rovacor',
+    
+    // Simvastatin (generic) and brand names
+    'simvastatin',
+    'Zocor',
+    'Simvotin',
+    'Simvor',
+    'Simvofix',
+    
+    // Pravastatin (generic) and brand names
+    'pravastatin',
+    'Pravachol',
+    'Lipostat',
+    'Selektine',
+    'Pravastatina',
+    
+    // Lovastatin (generic) and brand names
+    'lovastatin',
+    'Mevacor',
+    'Altoprev',
+    'Lovacor',
+    'Lovalip',
+    
+    // Fluvastatin (generic) and brand names
+    'fluvastatin',
+    'Lescol',
+    'Fluvator',
+    'Vastin',
+    'Flucor',
+    
+    // Pitavastatin (generic) and brand names
+    'pitavastatin',
+    'Livalo',
+    'Pitava',
+    'Livacor',
+    'Pitavol',
+    
+    // Rosuvastatin and ezetimibe combination (generic) and brand names
+    'rosuvastatin + ezetimibe',
+    'Crestor + Ezetrol',
+    'Rosulip + Ezetimibe',
+    'Rosuvas + Ezetimibe',
+    'Rovacor + Ezetimibe'
+    ];
+  
+  const hypertensionMeds = [
+    // ACE inhibitors
+    'benazepril',
+    'captopril',
+    'enalapril',
+    'fosinopril',
+    'lisinopril',
+    'moexipril',
+    'perindopril',
+    'quinapril',
+    'ramipril',
+    'trandolapril',
+    
+    // Angiotensin II receptor blockers (ARBs)
+    'azilsartan',
+    'candesartan',
+    'eprosartan',
+    'irbesartan',
+    'losartan',
+    'olmesartan',
+    'telmisartan',
+    'valsartan',
+    
+    // Calcium channel blockers (CCBs)
+    'amlodipine',
+    'diltiazem',
+    'felodipine',
+    'isradipine',
+    'nicardipine',
+    'nifedipine',
+    'nimodipine',
+    'verapamil',
+    
+    // Diuretics
+    'acetazolamide',
+    'amiloride',
+    'bumetanide',
+    'chlorothiazide',
+    'chlorthalidone',
+    'ethacrynic acid',
+    'furosemide',
+    'hydrochlorothiazide',
+    'indapamide',
+    'metolazone',
+    'spironolactone',
+    'torsemide',
+    'triamterene',
+    
+    // Beta blockers
+    'acebutolol',
+    'atenolol',
+    'betaxolol',
+    'bisoprolol',
+    'carvedilol',
+    'esmolol',
+    'labetalol',
+    'metoprolol',
+    'nadolol',
+    'nebivolol',
+    'propranolol',
+    'sotalol',
+    
+    // Alpha blockers
+    'doxazosin',
+    'prazosin',
+    'terazosin',
+    
+    // Aldosterone antagonists
+    'eplerenone',
+    'spironolactone',
+    
+    // Renin inhibitors
+    'aliskiren'
+    ];
+  
+  const takesStatin = Array.from(medicationList).some((medication) => {
+    const medName = medication.querySelector('.medication-name').innerText.toLowerCase();
+    return statinMeds.some((statinMed) => medName.includes(statinMed.toLowerCase()));
+  });
+  
+  const OnHypertensionMed = Array.from(medicationList).some((medication) => {
+    const medName = medication.querySelector('.medication-name').innerText.toLowerCase();
+    return hypertensionMeds.some((htnMed) => medName.includes(htnMed.toLowerCase()));
+  });
+  
+  const medicationInfo = {
+    takesStatin,
+    OnHypertensionMed,
+  };
+  
+  return medicationInfo;
+
 };

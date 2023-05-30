@@ -12,18 +12,30 @@
         <img class="mb-4 w-75" src="https://feeschedule.llibott.com/static/libott-logo.png">
       </div>
       <h4 class="text-start mb-3">Billing</h4>
-      <div class="col-12">
+      <div class="col-6 mb-2">
         <button class="btn btn-outline-light btn-sm mb-3" id="athenaConvertToPractice">Bill to Practice</button>
       </div>
-      <div class="col-12 mb-3">
+      <div class="col-6 mb-2">
         <button class="btn btn-outline-light btn-sm mb-3" id="athenaConvertToInsurance">Bill to Insurance</button>
       </div>
       <h4 class="text-start mb-3">Fee Schedule</h4>
-      <div class="col-12">
-        <button class="btn btn-outline-light btn-sm mb-3" id="athenaGrabOrdersButton">Grab Athena Orders</button>
+      <div class="col-6 mb-2">
+        <button class="btn btn-outline-light btn-sm mb-3" id="athenaGrabOrdersButton">Grab athena Orders</button>
       </div>
+      <div class="col-6 mb-2">
+        <button class="btn btn-outline-light btn-sm mb-3" id="addAthenaOrders">Add Orders to Fee Schedule</button>
+      </div>
+      <h4 class="text-start mb-3">Clinical</h4>
       <div class="col-12 mb-3">
-        <button class="btn btn-outline-light btn-sm mb-3" id="addAthenaOrders">Transfer Orders to Fee Schedule</button>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="checkbox" id="isAA" value="">
+          <label class="form-check-label" for="isAA">African American</label>
+        </div>
+        <div class="form-check form-check-inline mb-3">
+          <input class="form-check-input" type="checkbox" id="currentSmoker" value="">
+          <label class="form-check-label" for="currentSmoker">Current Smoker</label>
+        </div>
+        <button class="btn btn-outline-light btn-sm mb-3" id="calcASCVDRisk">Calculate ASCVD Risk</button>
       </div>
       <div class="col-12">
         <div class="alert alert-success collapse" id="success-alert" role="alert">
