@@ -300,6 +300,12 @@ function calcASCVDRisk(port) {
 
   // Grab and parse lipid results into object
   const patientLipidResults = getAnalyteValues(frMainDoc);
+  
+  // Check if patientLipidResults is undefined or empty
+  if (Object.keys(patientLipidResults).length === 0) {
+    alert("Uh-oh! There are no lipids found. Verify there are lipid results and/or that you're in the correct view.")
+    return;
+  };
 
 
   // Grab vitals
@@ -325,12 +331,18 @@ function calcASCVDRisk(port) {
         
         function checkForDiabetes(frMainDoc) {
           const diseaseElements = frMainDoc.querySelectorAll(".plw_c_problem__name");
-          const diseaseNames = Array.from(diseaseElements).map((element) => element.textContent.trim());
-        
-          const hasDiabetes = diseaseNames.some((name) => name.toLowerCase().includes('diabetes'));
-        
+          const diseaseNames = Array.from(diseaseElements).map((element) => element.textContent.trim().toLowerCase());
+          
+          const excludedTerms = ["pre-diabetes", "prediabetes", "pre diabetes"];
+          
+          const hasDiabetes = diseaseNames.some((name) => {
+            const lowercaseName = name.toLowerCase();
+            return lowercaseName.includes('diabetes') && !excludedTerms.some(term => lowercaseName.includes(term));
+          });
+          
           return hasDiabetes;
         };
+        
         PatientInfo.diabetic = checkForDiabetes(frMainDoc);
 
       }, 2000 );
@@ -404,15 +416,15 @@ function calcASCVDRisk(port) {
           const age = obj.age;
         
           if (typeof age === 'undefined') {
-            alert('No age found!');
-            return false;
+            alert('No age found! Unable to provide risk.');
+            return;
           };
         
           if (age >= 40 && age <= 79) {
             return true;
           } else {
-            alert('ASCVD Risk calculation is only for patients age 40-79.');
-            return false;
+            alert('ASCVD Risk calculation is only for patients age 40-79. Unable to provide risk.');
+            return;
           };
         };
         
@@ -422,16 +434,16 @@ function calcASCVDRisk(port) {
           const hdlCholesterol = data.HDLcholesterol;
           const age = data.age;
         
-          if (typeof age === 'undefined') {
-            alert('No age value provided.');
-            return false;
+          if (!hdlCholesterol) {
+            alert("Uh-oh. No HDL Cholesterol found. Make sure you're in the lab review and within a patient's chart view.");
+            return;
           }
         
           if (hdlCholesterol >= 20 && hdlCholesterol <= 200) {
             return true;
           } else {
-            alert('HDL cholesterol is out of range.');
-            return false;
+            alert('Uh-oh! HDL cholesterol is out of range. Unable to provide risk.');
+            return;
           }
         };
         
@@ -441,16 +453,16 @@ function calcASCVDRisk(port) {
           const cholesterol = obj.cholesteroltotal;
           const age = obj.age;
           
-          if (typeof age !== 'number') {
-            alert('Age value is missing!');
-            return false;
+          if (!cholesterol) {
+            alert("Uh-oh. No HDL Cholesterol found. Make sure you're in the lab review and within a patient's chart view.");
+            return;
           }
           
           if (cholesterol >= 130 && cholesterol <= 320) {
             return true;
           } else {
-            alert('Cholesterol is out of range!');
-            return false;
+            alert('Uh-oh! Total cholesterol is out of range! Unable to provide risk.');
+            return;
           }
         };
 
