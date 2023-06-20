@@ -605,21 +605,27 @@ function getAnalyteValues(frMainDoc) {
   const divs = frMainDoc.getElementsByClassName('multiple-document-item');
   const analyteObject = {};
 
+  let tableRows;
+
   for (let i = 0; i < divs.length; i++) {
     const link = divs[i].querySelector('a[data-title*=lipid]');
     if (link) {
-      const tableRows = divs[i].querySelectorAll('tr.multi-result-analyte-row');
-
-      for (let j = 0; j < tableRows.length; j++) {
-        const analyteName = tableRows[j].querySelector('.analyte-row-observationidentifiertext').textContent.trim();
-        const analyteValue = tableRows[j].querySelector('.analyte-row-observationvalue').textContent.trim();
-
-        analyteObject[analyteName] = analyteValue;
-      };
-
+      tableRows = divs[i].querySelectorAll('tr.multi-result-analyte-row');
       break; // Exit the loop if a match is found
-    };
-  };
+    }
+  }
+
+  if (!tableRows) {
+    // If 'multiple-document-item' class is not found, fallback to the table
+    tableRows = frMainDoc.querySelectorAll('table.observations tbody tr.multi-result-analyte-row');
+  }
+
+  for (let j = 0; j < tableRows.length; j++) {
+    const analyteName = tableRows[j].querySelector('.analyte-row-observationidentifiertext').textContent.trim();
+    const analyteValue = tableRows[j].querySelector('.analyte-row-observationvalue').textContent.trim();
+
+    analyteObject[analyteName] = analyteValue;
+  }
 
   return analyteObject;
 };
