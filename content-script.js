@@ -170,32 +170,38 @@ function convertToInsurance(port) {
   let orderCount = 0;
 
   let orderItem = frMainDoc.querySelectorAll('.orders .order .accordion-trigger');
-  orderItem.forEach((order) => {
-    // Perform action on each order element
-    // order.click();
-    clickOnElement(order).then(() => {
-      const detailsView = frMainDoc.querySelector('.details-view');
-      detailsView.classList.add('show-secondary');
-
-      setTimeout(function(){
-        // convert from 'PRACTICE' to 'INSURANCE'
-        const orderBilling = frMainDoc.querySelectorAll(`span[data-value="INSURANCE"].select-bar-option`);
+  if (orderItem){
+    orderItem.forEach((order) => {
+      // Perform action on each order element
+      clickOnElement(order).then(() => {
+        const detailsView = frMainDoc.querySelector('.details-view');
+        detailsView.classList.add('show-secondary');
   
-        if (orderBilling[orderCount]){
-          orderBilling[orderCount].click();
-        };
-  
-        order.click();
-  
-        orderCount += 1;
-  
-        if (orderCount == orderBilling.length){
-          port.postMessage({status: "athenaConvertToInsurance-success"});
-        };
-  
-      }, 2000);
-    })
-  });
+        setTimeout(function(){
+          // convert from 'PRACTICE' to 'INSURANCE'
+          const orderBilling = frMainDoc.querySelectorAll(`span[data-value="INSURANCE"].select-bar-option`);
+    
+          if (orderBilling[orderCount]){
+            orderBilling[orderCount].click();
+          };
+    
+          order.click();
+    
+          orderCount += 1;
+    
+          if (orderCount == orderBilling.length){
+            port.postMessage({status: "athenaConvertToInsurance-success"});
+          } else {
+            alert('Uh-Oh. Double-check if patient has insurance.').then(() => {port.postMessage({status: "athenaConvertToInsurance-failed"});})
+          };
+    
+        }, 2000);
+      })
+    });
+  } else{
+    port.postMessage({status: "athenaConvertToInsurance-failed"});
+    return;
+  };
 };
 
 
@@ -204,31 +210,38 @@ function convertToPractice(port) {
   let orderCount = 0;
 
   var orderItem = frMainDoc.querySelectorAll('.orders .order .accordion-trigger');
-  orderItem.forEach((order) => {
-    // Perform action on each order element
-    clickOnElement(order).then(() => {
-      const detailsView = frMainDoc.querySelector('.details-view');
-      detailsView.classList.add('show-secondary');
-
-      setTimeout(function(){
-        // convert from 'PRACTICE' to 'INSURANCE'
-        const orderBilling = frMainDoc.querySelectorAll(`span[data-value="CLIENTBILL"].select-bar-option`);
-
-        if (orderBilling[orderCount]){
-          orderBilling[orderCount].click();
-        };
-
-        order.click();
-
-        orderCount += 1;
-
-        if (orderCount == orderBilling.length){
-          port.postMessage({status: "athenaConvertToPractice-success"});
-        };
-
-      }, 2000);
+  if (orderItem){
+    orderItem.forEach((order) => {
+      // Perform action on each order element
+      clickOnElement(order).then(() => {
+        const detailsView = frMainDoc.querySelector('.details-view');
+        detailsView.classList.add('show-secondary');
+  
+        setTimeout(function(){
+          // convert from 'PRACTICE' to 'INSURANCE'
+          orderBillingStatus = frMainDoc.querySelectorAll(`span[data-value="INSURANCE"].select-bar-option`);
+    
+          if (orderBillingStatus[orderCount]){
+            orderBillingStatus[orderCount].click();
+          };
+    
+          order.click();
+    
+          orderCount += 1;
+    
+          if (orderCount == orderBilling.length){
+            port.postMessage({status: "athenaConvertToPractice-success"});
+          } else {
+            port.postMessage({status: "athenaConvertToPractice-failed"});
+          };
+    
+        }, 2000);
+      })
     });
-  });
+  } else {
+    alert("Uh-Oh! Something went wrong. Make sure you're in the A/P section of the note and that there are orders present.").then(() => {port.postMessage({status: "athenaConvertToPractice-failed"});});
+    return;
+  };
 };
 
 // Adds athena orders to Fee Schedule
@@ -238,13 +251,14 @@ function addAthenaOrders(port){
    // Get data from the storage
    chrome.storage.local.get(['labs'])
    .then(function(result) {
-       importOrdersButton.setAttribute('data-value', `${result.labs}`);
-       importOrdersButton.click();
-       chrome.storage.local.clear()
-       port.postMessage({status: "addAthenaOrders-success"});
+      importOrdersButton.setAttribute('data-value', `${result.labs}`);
+      importOrdersButton.click();
+      chrome.storage.local.clear()
+      port.postMessage({status: "addAthenaOrders-success"});
    })
    .catch(function(error) {
-       console.error('Error occurred while retrieving data from the storage', error);
+      port.postMessage({status: "addAthenaOrders-failed"});
+      console.error('Error occurred while retrieving data from the storage', error);
    });
 };
 
@@ -561,13 +575,13 @@ function calcASCVDRisk(port) {
 
         if (systolicBPValidated && ageValidated && hdlValidated && totalCholesterolValidated){
           const ascvdRisk = computeTenYearScore(patientRiskData);
-          port.postMessage({status: "calcASCVDRisk-success"});
           alert(`10-year ASCVD Risk: ${ascvdRisk}%`);
         };
+        port.postMessage({status: "calcASCVDRisk-success"});
       }, 2000 );
     });
   } else {
-    alert("Please navigate into patient's chart and make sure lipid labs are visible.");
+    alert("Please navigate into patient's chart and make sure lipid labs are visible.").then(() => {port.postMessage({status: "calcASCVDRisk-failed"});});
   };
 };
 

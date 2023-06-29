@@ -7,21 +7,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const addAthenaOrdersButton = document.getElementById('addAthenaOrders');
     const calcASCVDRiskButton = document.getElementById('calcASCVDRisk');
     const successAlert = document.querySelector('#success-alert');
+    const loaderSpinner = document.querySelector('#loaderSpinner');
     
-    const openLongLivedConnection = (message, successStatus) => {
+    const openLongLivedConnection = (message, successStatus, failedStatus) => {
         chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
             const activeTab = tabs[0];
             var port = chrome.tabs.connect(activeTab.id, {name: "athenaConnection"});
             port.postMessage({"message": message});
             port.onMessage.addListener(function(msg) {
                 if (msg.status === successStatus) {
-                    console.log(`${message} response received:`, msg);
-                    successAlert.classList.toggle('collapse');
+                    loaderSpinner.classList.toggle('collapse');
                     setTimeout(function(){
                         successAlert.classList.toggle('collapse');
                     }, 2500);
-                    console.log('msg.labs:', JSON.stringify(msg.labs));
                     navigator.clipboard.writeText(JSON.stringify(msg.labs));
+                } else if (msg.status === failedStatus){
+                    loaderSpinner.classList.toggle('collapse');
                 };
             });
         });
@@ -29,26 +30,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Adds orders to fee schedule
     addAthenaOrdersButton.addEventListener('click', function() {
-        openLongLivedConnection("addAthenaOrders", "addAthenaOrders-success");
+        loaderSpinner.classList.toggle('collapse');
+        openLongLivedConnection("addAthenaOrders", "addAthenaOrders-success", "addAthenaOrders-failed");
     });
     
     athenaGrabOrdersButton.addEventListener('click', function() {
-        console.log('Trigger athenaGrabOrdersButton.click()');
-        openLongLivedConnection("athenaGrabOrders", "athenaGrabOrders-success");
+        loaderSpinner.classList.toggle('collapse');
+        openLongLivedConnection("athenaGrabOrders", "athenaGrabOrders-success", "athenaGrabOrders-failed");
     });
     
     athenaConvertToInsurance.addEventListener('click', function() {
-        console.log('Trigger athenaConvertToInsurance.click()');
-        openLongLivedConnection("athenaConvertToInsurance", "athenaConvertToInsurance-success");
+        loaderSpinner.classList.toggle('collapse');
+        openLongLivedConnection("athenaConvertToInsurance", "athenaConvertToInsurance-success", "athenaConvertToInsurance-failed");
     });
     
     athenaConvertToPractice.addEventListener('click', function() {
-        console.log('Trigger athenaConvertToPractice.click()');
-        openLongLivedConnection("athenaConvertToPractice", "athenaConvertToPractice-success");
+        loaderSpinner.classList.toggle('collapse');
+        openLongLivedConnection("athenaConvertToPractice", "athenaConvertToPractice-success", "athenaConvertToPractice-failed");
     });
 
     calcASCVDRiskButton.addEventListener('click', function() {
-        console.log('Trigger calcASCVDRiskButton.click()');
+        loaderSpinner.classList.toggle('collapse');
         const storeCheckboxState = () => {
             // Get the checkbox elements
             const aaCheckbox = document.getElementById('isAA');
@@ -67,6 +69,6 @@ document.addEventListener('DOMContentLoaded', function() {
           };
 
         storeCheckboxState();
-        openLongLivedConnection("calcASCVDRisk", "calcASCVDRisk-success");
+        openLongLivedConnection("calcASCVDRisk", "calcASCVDRisk-success", "calcASCVDRisk-failed");
     });
 });
