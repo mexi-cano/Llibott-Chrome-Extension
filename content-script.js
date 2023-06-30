@@ -191,8 +191,6 @@ function convertToInsurance(port) {
     
           if (orderCount == orderBilling.length){
             port.postMessage({status: "athenaConvertToInsurance-success"});
-          } else {
-            alert('Uh-Oh. Double-check if patient has insurance.').then(() => {port.postMessage({status: "athenaConvertToInsurance-failed"});})
           };
     
         }, 2000);
