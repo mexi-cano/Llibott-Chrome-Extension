@@ -1,5 +1,3 @@
-console.log('POPUP SCRIPT RUNNING.')
-
 document.addEventListener('DOMContentLoaded', function() {
     const athenaGrabOrdersButton = document.getElementById('athenaGrabOrdersButton');
     const athenaConvertToInsurance = document.getElementById('athenaConvertToInsurance');

@@ -330,14 +330,14 @@ function calcASCVDRisk(port) {
     // Click event on the Problems element
     clickOnElement(vitalsTab).then(() => {
       setTimeout(function() {
-        function checkForHypertension(frMainDoc) {
+        const checkForHypertension = (frMainDoc) => {
           const diseaseElements = frMainDoc.querySelectorAll(".plw_c_problem__name");
           const diseaseNames = Array.from(diseaseElements).map((element) => element.textContent.trim());
         
           const targetRegex = /(hypertension|hypertensive disorder|hypertensive heart and renal disease|benign essential hypertension)/i;
         
-          return diseaseNames.some((name) => targetRegex.test(name));
-        };
+          return diseaseNames.some((name) => targetRegex.test(name) && name !== "elevated blood-pressure reading without diagnosis of hypertension");
+        };        
   
         PatientInfo.hypertensive = checkForHypertension(frMainDoc);
         
@@ -364,13 +364,27 @@ function calcASCVDRisk(port) {
     clickOnElement(vitalsTab).then(() => {
       setTimeout(function() {
         function findBPValue(frMainDoc) {
-          const bpElement = frMainDoc.querySelector('[data-vital-key="BLOODPRESSURE"] .value');
-          
-          if (bpElement) {
-            const [systolicBP, diastolicBP] = bpElement.textContent.trim().split('/').map(value => parseInt(value));
-            return { systolicBP, diastolicBP };
-          }
-          
+          const bpElements = frMainDoc.querySelectorAll('[data-vital-key="BLOODPRESSURE"] .vital-reading');
+  
+          if (bpElements.length > 0) {
+            let lowestSystolicBP = Infinity;
+            let lowestDiastolicBP = Infinity;
+            
+            for (const bpElement of bpElements) {
+              const [systolicBP, diastolicBP] = bpElement.textContent.trim().split('/').map(value => parseInt(value));
+              
+              if (systolicBP < lowestSystolicBP) {
+                lowestSystolicBP = systolicBP;
+              };
+              
+              if (diastolicBP < lowestDiastolicBP) {
+                lowestDiastolicBP = diastolicBP;
+              };
+            };
+            
+            return { systolicBP: lowestSystolicBP, diastolicBP: lowestDiastolicBP };
+          };
+        
           return null;
         };
         bpValues = findBPValue(frMainDoc);
