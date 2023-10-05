@@ -1,5 +1,3 @@
-console.log('CONTENT SCRIPT RUNNING.');
-
 // Helper functions
 function focusOnFrMainDoc(){
   const iframe = document.getElementById('GlobalWrapper');
@@ -292,21 +290,21 @@ function calcASCVDRisk(port) {
     chrome.storage.local.clear()
   });
 
-  const patientDemographicsHTML = frMainDoc.getElementsByClassName('age-and-sex');
-  // Parse html data into patientDemographic object
-  for (let i = 0; i < patientDemographicsHTML.length; i++) {
-    const element = patientDemographicsHTML[i];
-    const text = element.textContent.trim();
+  const patientDemographicsHTMLShadowRoot = frMainDoc.querySelector('#nimbus-banner-container .autostart').shadowRoot;
+  const patientDemographicsHTML = patientDemographicsHTMLShadowRoot.querySelectorAll('.pb_c_patient-banner-component__details')
+  const ageAndGender = patientDemographicsHTML[0].firstChild.outerText;
 
-    const ageMatch = text.match(/(\d+)yo/);
-    const genderMatch = text.match(/([MF])/);
+  const ageMatch = ageAndGender.match(/(\d+)yo/);
+  const age = ageMatch ? parseInt(ageMatch[1]) : null;
 
-    if (ageMatch && genderMatch) {
-      PatientInfo.age = parseInt(ageMatch[1]);
-      PatientInfo.gender = genderMatch[1];
-    } else {
-      alert('Patient age or gender is missing!');
-    };
+  const genderMatch = ageAndGender.match(/([MF])/); 
+  const gender = genderMatch ? genderMatch[1] : null;
+  
+  if (age && gender) {
+    PatientInfo.age = parseInt(ageMatch[1]);
+    PatientInfo.gender = genderMatch[1];
+  } else {
+    alert('Patient age and/or gender is missing!');
   };
 
 
