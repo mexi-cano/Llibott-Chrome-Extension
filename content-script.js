@@ -232,50 +232,79 @@ function convertToInsurance(port) {
   }
 }
 
+function waitForElement(selector, parent = document) {
+  return new Promise(resolve => {
+    const element = parent.querySelector(selector);
+    if (element) {
+      resolve(element);
+      return;
+    }
+
+    const observer = new MutationObserver(() => {
+      const element = parent.querySelector(selector);
+      if (element) {
+        observer.disconnect();
+        resolve(element);
+      }
+    });
+
+    observer.observe(parent, {
+      childList: true,
+      subtree: true
+    });
+  });
+}
+
 function convertToPractice(port) {
   const frMainDoc = focusOnFrMainDoc();
-  let orderCount = 0;
+  let processedOrders = 0;
+  let totalOrders = 0;
 
-  var orderItem = frMainDoc.querySelectorAll(
-    ".orders .order .accordion-trigger"
-  );
-  if (orderItem) {
-    orderItem.forEach((order) => {
-      // Perform action on each order element
-      clickOnElement(order).then(() => {
-        const detailsView = frMainDoc.querySelector(".details-view");
-        detailsView.classList.add("show-secondary");
-
-        setTimeout(function () {
-          // convert from 'PRACTICE' to 'INSURANCE'
-          orderBillingStatus = frMainDoc.querySelectorAll(
-            `span[data-value="INSURANCE"].select-bar-option`
-          );
-
-          if (orderBillingStatus[orderCount]) {
-            orderBillingStatus[orderCount].click();
-          }
-
-          order.click();
-
-          orderCount += 1;
-
-          if (orderCount == orderBilling.length) {
-            port.postMessage({ status: "athenaConvertToPractice-success" });
-          } else {
-            port.postMessage({ status: "athenaConvertToPractice-failed" });
-          }
-        }, 2000);
-      });
-    });
-  } else {
-    alert(
-      "Uh-Oh! Something went wrong. Make sure you're in the A/P section of the note and that there are orders present."
-    ).then(() => {
-      port.postMessage({ status: "athenaConvertToPractice-failed" });
-    });
+  const orderLists = frMainDoc.querySelectorAll(".orders.encounter-list");
+  if (!orderLists.length) {
+    alert("No orders found").then(() => 
+      port.postMessage({ status: "athenaConvertToPractice-failed" })
+    );
     return;
   }
+
+  orderLists.forEach(list => {
+    const hasLabCorp = Array.from(
+      list.querySelectorAll('.order .basics .info-group span[data-input-name="clinical-provider"]')
+    ).some(span => span.textContent.trim() === "Labcorp PSC");
+    
+    if (hasLabCorp) {
+      const orders = list.querySelectorAll(".order .accordion-trigger");
+      totalOrders += orders.length;
+      
+      orders.forEach(async (order) => {
+        try {
+          await clickOnElement(order);
+          
+          // Wait for details view to appear
+          const detailsView = await waitForElement(".details-view", frMainDoc);
+          detailsView.classList.add("show-secondary");
+          
+          // Wait for practice option to appear and click it
+          const practiceOption = await waitForElement('span[data-value="PRACTICE"].select-bar-option', frMainDoc);
+          if (practiceOption) {
+            practiceOption.click();
+            order.click();
+            
+            if (++processedOrders === totalOrders) {
+              port.postMessage({ status: "athenaConvertToPractice-success" });
+            }
+          }
+        } catch (error) {
+          console.error('Error processing order:', error);
+          alert(
+            "Uh-Oh! Something went wrong. Make sure you're in the A/P section of the note and that there are orders present."
+          )
+          port.postMessage({ status: "athenaConvertToPractice-failed" });
+        }
+      });
+    }
+  });
 }
 
 // Adds athena orders to Fee Schedule
