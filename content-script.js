@@ -176,106 +176,230 @@ chrome.runtime.onConnect.addListener(function (port) {
 // Conversion functions
 function convertToInsurance(port) {
   const frMainDoc = focusOnFrMainDoc();
-  let orderCount = 0;
+  let totalProcessed = 0;
+  let totalLabCorpOrders = 0;
 
-  const orderLists = frMainDoc.querySelectorAll(".orders.encounter-list");
-
-  orderLists.forEach((orderList) => {
-    const labCorpOrders = orderList.querySelectorAll(
-      '.order .basics .info-group span[data-input-name="clinical-provider"]'
-    );
-
-    let hasLabCorpOrder = false;
-    labCorpOrders.forEach((labCorpOrder) => {
-      if (labCorpOrder.textContent.trim() === "Labcorp PSC") {
-        hasLabCorpOrder = true;
-      }
+  // Get all order groups
+  const orderGroups = frMainDoc.querySelectorAll("article.order-group");
+  
+  if (!orderGroups || orderGroups.length === 0) {
+    alert("No order groups found. Make sure you're in the A/P section.");
+    port.postMessage({ 
+      status: "athenaConvertToInsurance-failed",
+      message: "No order groups found. Make sure you're in the A/P section."
     });
+    return;
+  }
 
-    if (hasLabCorpOrder) {
-      const orderItems = orderList.querySelectorAll(
-        ".order .accordion-trigger"
+  // Process each order group sequentially
+  async function processOrderGroups() {
+    for (const group of orderGroups) {
+      // Check if this group has any LabCorp orders
+      const labCorpProviders = group.querySelectorAll(
+        '.order .basics .info-group span[data-input-name="clinical-provider"]'
       );
-      orderItems.forEach((order) => {
-        // Perform action on each order element
-        clickOnElement(order).then(() => {
-          const detailsView = frMainDoc.querySelector(".details-view");
-          detailsView.classList.add("show-secondary");
 
-          setTimeout(function () {
-            // convert from 'PRACTICE' to 'INSURANCE'
-            const orderBilling = frMainDoc.querySelectorAll(
-              `span[data-value="INSURANCE"].select-bar-option`
-            );
+      const hasLabCorpOrder = Array.from(labCorpProviders)
+        .some(provider => provider.textContent.trim() === "Labcorp PSC");
 
-            if (orderBilling[orderCount]) {
-              orderBilling[orderCount].click();
-            }
+      if (hasLabCorpOrder) {
+        // Get all orders in this group
+        const orderItems = group.querySelectorAll(".order .accordion-trigger");
+        totalLabCorpOrders += orderItems.length;
 
-            order.click();
+        // Process each order in the group sequentially
+        for (const order of orderItems) {
+          await new Promise(resolve => {
+            clickOnElement(order).then(() => {
+              setTimeout(() => {
+                // Find the details view within the specific order's context
+                const orderContainer = order.closest('.order');
+                if (!orderContainer) {
+                  resolve();
+                  return;
+                }
 
-            orderCount += 1;
+                const detailsView = orderContainer.querySelector(".details-view");
+                if (detailsView) {
+                  detailsView.classList.add("show-secondary");
+                  
+                  // Wait for the billing options to be visible
+                  setTimeout(() => {
+                    // Find the billing option within this specific order's context
+                    const orderBilling = detailsView.querySelector(
+                      'span[data-value="INSURANCE"].select-bar-option'
+                    );
 
-            if (orderCount == orderItems.length) {
-              console.log("athenaConvertToInsurance-success");
-              port.postMessage({ status: "athenaConvertToInsurance-success" });
-            }
-          }, 2000);
-        });
+                    if (orderBilling) {
+                      orderBilling.click();
+                      totalProcessed++;
+                      console.log(`Processed order ${totalProcessed} of ${totalLabCorpOrders}`);
+                    } else {
+                      console.log('Billing option not found for current order');
+                    }
+
+                    // Close the order details
+                    order.click();
+                    resolve();
+                  }, 1500); // Increased timeout to ensure billing options are loaded
+                } else {
+                  console.log('Details view not found for current order');
+                  resolve();
+                }
+              }, 1500); // Increased timeout for DOM updates
+            });
+          });
+
+          // Add a small delay between processing orders
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+    }
+
+    // After all groups are processed, send appropriate message
+    if (totalLabCorpOrders === 0) {
+      alert("No LabCorp orders found to process.");
+      port.postMessage({ 
+        status: "athenaConvertToInsurance-failed",
+        message: "No LabCorp orders found to process."
+      });
+    } else if (totalProcessed === totalLabCorpOrders) {
+      port.postMessage({ 
+        status: "athenaConvertToInsurance-success",
+        message: `Successfully processed ${totalProcessed} LabCorp orders`
+      });
+    } else {
+      alert(`Warning: Only ${totalProcessed} out of ${totalLabCorpOrders} LabCorp orders were converted to Insurance billing. Please review the orders and try again if needed.`);
+      port.postMessage({ 
+        status: "athenaConvertToInsurance-failed",
+        message: `Only processed ${totalProcessed} out of ${totalLabCorpOrders} LabCorp orders`
       });
     }
-  });
-
-  if (!orderLists) {
-    console.log("athenaConvertToInsurance-failed");
-    port.postMessage({ status: "athenaConvertToInsurance-failed" });
   }
+
+  // Start processing the order groups
+  processOrderGroups().catch(error => {
+    console.error('Error processing orders:', error);
+    alert(`Error processing orders: ${error.message}`);
+    port.postMessage({ 
+      status: "athenaConvertToInsurance-failed",
+      message: "Error processing orders: " + error.message
+    });
+  });
 }
 
 function convertToPractice(port) {
   const frMainDoc = focusOnFrMainDoc();
-  let orderCount = 0;
+  let totalProcessed = 0;
+  let totalLabCorpOrders = 0;
 
-  var orderItem = frMainDoc.querySelectorAll(
-    ".orders .order .accordion-trigger"
-  );
-  if (orderItem) {
-    orderItem.forEach((order) => {
-      // Perform action on each order element
-      clickOnElement(order).then(() => {
-        const detailsView = frMainDoc.querySelector(".details-view");
-        detailsView.classList.add("show-secondary");
-
-        setTimeout(function () {
-          // convert from 'PRACTICE' to 'INSURANCE'
-          orderBillingStatus = frMainDoc.querySelectorAll(
-            `span[data-value="INSURANCE"].select-bar-option`
-          );
-
-          if (orderBillingStatus[orderCount]) {
-            orderBillingStatus[orderCount].click();
-          }
-
-          order.click();
-
-          orderCount += 1;
-
-          if (orderCount == orderBilling.length) {
-            port.postMessage({ status: "athenaConvertToPractice-success" });
-          } else {
-            port.postMessage({ status: "athenaConvertToPractice-failed" });
-          }
-        }, 2000);
-      });
-    });
-  } else {
-    alert(
-      "Uh-Oh! Something went wrong. Make sure you're in the A/P section of the note and that there are orders present."
-    ).then(() => {
-      port.postMessage({ status: "athenaConvertToPractice-failed" });
+  // Get all order groups
+  const orderGroups = frMainDoc.querySelectorAll("article.order-group");
+  
+  if (!orderGroups || orderGroups.length === 0) {
+    alert("No order groups found. Make sure you're in the A/P section.");
+    port.postMessage({ 
+      status: "athenaConvertToPractice-failed",
+      message: "No order groups found. Make sure you're in the A/P section."
     });
     return;
   }
+
+  // Process each order group sequentially
+  async function processOrderGroups() {
+    for (const group of orderGroups) {
+      // Check if this group has any LabCorp orders
+      const labCorpProviders = group.querySelectorAll(
+        '.order .basics .info-group span[data-input-name="clinical-provider"]'
+      );
+
+      const hasLabCorpOrder = Array.from(labCorpProviders)
+        .some(provider => provider.textContent.trim() === "Labcorp PSC");
+
+      if (hasLabCorpOrder) {
+        // Get all orders in this group
+        const orderItems = group.querySelectorAll(".order .accordion-trigger");
+        totalLabCorpOrders += orderItems.length;
+
+        // Process each order in the group sequentially
+        for (const order of orderItems) {
+          await new Promise(resolve => {
+            clickOnElement(order).then(() => {
+              setTimeout(() => {
+                // Find the details view within the specific order's context
+                const orderContainer = order.closest('.order');
+                if (!orderContainer) {
+                  resolve();
+                  return;
+                }
+
+                const detailsView = orderContainer.querySelector(".details-view");
+                if (detailsView) {
+                  detailsView.classList.add("show-secondary");
+                  
+                  // Wait for the billing options to be visible
+                  setTimeout(() => {
+                    // Find the billing option within this specific order's context
+                    const orderBilling = detailsView.querySelector(
+                      'span[data-value="CLIENTBILL"].select-bar-option'
+                    );
+
+                    if (orderBilling) {
+                      orderBilling.click();
+                      totalProcessed++;
+                      console.log(`Processed order ${totalProcessed} of ${totalLabCorpOrders}`);
+                    } else {
+                      console.log('Billing option not found for current order');
+                    }
+
+                    // Close the order details
+                    order.click();
+                    resolve();
+                  }, 1500); // Increased timeout to ensure billing options are loaded
+                } else {
+                  console.log('Details view not found for current order');
+                  resolve();
+                }
+              }, 1500); // Increased timeout for DOM updates
+            });
+          });
+
+          // Add a small delay between processing orders
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+    }
+
+    // After all groups are processed, send appropriate message
+    if (totalLabCorpOrders === 0) {
+      alert("No LabCorp orders found to process.");
+      port.postMessage({ 
+        status: "athenaConvertToPractice-failed",
+        message: "No LabCorp orders found to process."
+      });
+    } else if (totalProcessed === totalLabCorpOrders) {
+      port.postMessage({ 
+        status: "athenaConvertToPractice-success",
+        message: `Successfully processed ${totalProcessed} LabCorp orders`
+      });
+    } else {
+      alert(`Warning: Only ${totalProcessed} out of ${totalLabCorpOrders} LabCorp orders were converted to Practice billing. Please review the orders and try again if needed.`);
+      port.postMessage({ 
+        status: "athenaConvertToPractice-failed",
+        message: `Only processed ${totalProcessed} out of ${totalLabCorpOrders} LabCorp orders`
+      });
+    }
+  }
+
+  // Start processing the order groups
+  processOrderGroups().catch(error => {
+    console.error('Error processing orders:', error);
+    alert(`Error processing orders: ${error.message}`);
+    port.postMessage({ 
+      status: "athenaConvertToPractice-failed",
+      message: "Error processing orders: " + error.message
+    });
+  });
 }
 
 // Adds athena orders to Fee Schedule
